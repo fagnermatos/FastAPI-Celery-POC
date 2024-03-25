@@ -1,0 +1,45 @@
+version: '3.7'
+
+services:
+  fastapi:
+    build:
+      context: ./
+      dockerfile: ./fastapi/Dockerfile
+    container_name: fastapi
+    restart: always
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - 8080:8080
+    volumes:
+      - /home/pdi-5390/Projetos/FASTAPI/FastCeleryWork/app:/code/app:rw
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    container_name: redis
+
+  worker:
+    build:
+      context: ./
+      dockerfile: ./celery/Dockerfile
+    container_name: worker
+    command: [ 'celery', '-A', 'app.celery_worker', 'worker', '-l', 'info' ]
+    volumes:
+      - /home/pdi-5390/Projetos/FASTAPI/FastCeleryWork/app:/code/app:rw
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  flower:
+    build:
+      context: ./
+      dockerfile: ./celery/Dockerfile
+    container_name: flower
+    command: [ 'celery', '--broker=redis://redis:6379', 'flower', '--port=5555' ]
+    env_file:
+      - .env
+    ports:
+      - 5557:5555
+    depends_on:
+      - redis
